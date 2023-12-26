@@ -1,50 +1,74 @@
 package com.javatodev.app.service;
 
-import com.amazonaws.services.sqs.AmazonSQS;
-import com.amazonaws.services.sqs.model.Message;
-import com.amazonaws.services.sqs.model.QueueDoesNotExistException;
-import com.amazonaws.services.sqs.model.ReceiveMessageResult;
+import java.time.OffsetDateTime;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import com.amazonaws.services.sqs.AmazonSQSAsync;
+import com.amazonaws.services.sqs.model.Message;
+
+import org.springframework.cloud.aws.messaging.core.QueueMessagingTemplate;
+import org.springframework.cloud.aws.messaging.listener.annotation.SqsListener;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
+import io.opentelemetry.api.trace.SpanKind;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class MessageQueueService {
+    @Autowired
+    AmazonSQSAsync amazonSQSAsync;
 
-    @Value("${app.config.message.queue.topic}")
-    private String messageQueueTopic;
+    @Value("${spring.cloud.aws.credentials.access-key}")
+    private String accesskey;
 
-    private final AmazonSQS amazonSQSClient;
+    @Value("${spring.cloud.aws.credentials.secret-key}")
+    private String awsSecretKeyId;
+    private QueueMessagingTemplate queueMessagingTemplate;
 
-    @Scheduled(fixedDelay = 5000) //executes on every 5 second gap.
-    public void receiveMessages() {
-        try {
-            String queueUrl = amazonSQSClient.getQueueUrl(messageQueueTopic).getQueueUrl();
-            log.info("Reading SQS Queue done: URL {}", queueUrl);
+    @Autowired
+    public void SpringCloudSQSService(AmazonSQSAsync amazonSQSAsync) {
+        this.queueMessagingTemplate = new QueueMessagingTemplate(amazonSQSAsync);
+    }
+    // private final AmazonSQS amazonSQSClient;
 
-            ReceiveMessageResult receiveMessageResult = amazonSQSClient.receiveMessage(queueUrl);
+    // @Valid T paramT, MessageHeaders paramMessageHeaders, Acknowledgment
+    // paramAcknowledgment
+    @WithSpan(kind = SpanKind.SERVER)
+    @SqsListener("${spring.cloud.aws.sqs.endpoint}")
+    public void listen(String message) {
+        log.info("Message received on listen method at {}", OffsetDateTime.now());
 
-            if (!receiveMessageResult.getMessages().isEmpty()) {
-                Message message = receiveMessageResult.getMessages().get(0);
-                log.info("Incoming Message From SQS {}", message.getMessageId());
-                log.info("Message Body {}", message.getBody());
-                processInvoice(message.getBody());
-                amazonSQSClient.deleteMessage(queueUrl, message.getReceiptHandle());
-            }
-
-        } catch (QueueDoesNotExistException e) {
-            log.error("Queue does not exist {}", e.getMessage());
-        }
     }
 
-    private void processInvoice(String body) {
-        log.info("Processing invoice generation and sending invoice emails from here..");
-    }
+    // @Scheduled(fixedDelay = 5000) // executes on every 5 second gap.
+    // public void receiveMessages() {
 
+    // log.info("DEBUG " + accesskey);
+    // log.info("DEBUG " + awsSecretKeyId);
+
+    // try {
+    // String queueUrl =
+    // amazonSQSClient.getQueueUrl(messageQueueTopic).getQueueUrl();
+    // log.info("Reading SQS Queue done: URL {}", queueUrl);
+
+    // ReceiveMessageResult receiveMessageResult =
+    // amazonSQSClient.receiveMessage(queueUrl);
+
+    // if (!receiveMessageResult.getMessages().isEmpty()) {
+    // Message message = receiveMessageResult.getMessages().get(0);
+    // log.info("Incoming Message From SQS {}", message.getMessageId());
+    // log.info("Message Body {}", message.getBody());
+    // processInvoice(message.getBody());
+    // amazonSQSClient.deleteMessage(queueUrl, message.getReceiptHandle());
+    // }
+
+    // } catch (QueueDoesNotExistException e) {
+    // log.error("Queue does not exist {}", e.getMessage());
+    // }
+    // }
 }
