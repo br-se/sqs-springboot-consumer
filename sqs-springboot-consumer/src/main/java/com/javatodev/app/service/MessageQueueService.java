@@ -19,11 +19,8 @@ import com.amazonaws.services.sqs.AmazonSQSAsync;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.context.Scope;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-// import io.opentelemetry.instrumentation.annotations.WithSpan;
-// import io.opentelemetry.api.trace.SpanKind;
 
 @Slf4j
 @Service
@@ -50,15 +47,16 @@ public class MessageQueueService {
     // @WithSpan(kind = SpanKind.SERVER)
     @SqsListener(value = "${spring.cloud.aws.sqs.endpoint}", deletionPolicy = SqsMessageDeletionPolicy.ALWAYS)
     public void listen(String message, @Headers Map<String, String> headers) {
-        Span span = OpenTelUtils.addTrace(headers, "sqs-listener", SpanKind.CONSUMER);
+        Span span = OpenTelUtils.addTrace(headers, "sqs-listener",
+                SpanKind.CONSUMER);
 
         // log.info("Message headers", headers);
         // for (Map.Entry<String, String> entry : headers.entrySet()) {
-        // log.info(entry.getKey() + ":" + entry.getValue());
+        // log.info(entry.getKey() + ":" + entry.getValue().toString());
         // }
 
         log.info("Message received on listen method at {}", OffsetDateTime.now());
-        try (Scope scope = span.makeCurrent()) {
+        try {
             // try {
             log.info("Sending message to Kafka");
 
@@ -68,6 +66,7 @@ public class MessageQueueService {
             e.printStackTrace();
         } finally {
             if (span != null) {
+                System.out.println("Ending SPAN");
                 span.end();
             }
         }

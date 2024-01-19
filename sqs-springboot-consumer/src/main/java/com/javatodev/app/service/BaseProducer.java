@@ -1,7 +1,5 @@
 package com.javatodev.app.service;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -10,15 +8,9 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.context.Scope;
 
 public abstract class BaseProducer {
 
@@ -41,8 +33,8 @@ public abstract class BaseProducer {
     protected Producer<String, String> producer;
 
     public void run(Map<String, String> headers) {
-        Span span = OpenTelUtils.addTrace(headers, "producer-send", SpanKind.PRODUCER);
-        try (Scope scope = span.makeCurrent()) {
+
+        try {
             for (int i = 0; i < this.numMessages; i++) {
                 String message = "produced by java (fargate) - message number " + i;
 
@@ -60,9 +52,6 @@ public abstract class BaseProducer {
             // Do nothing
         } finally {
             this.producer.close();
-            if (span != null) {
-                span.end();
-            }
         }
     }
 

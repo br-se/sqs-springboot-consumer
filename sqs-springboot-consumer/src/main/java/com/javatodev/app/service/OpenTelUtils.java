@@ -37,19 +37,19 @@ public class OpenTelUtils {
     static TextMapGetter<Map<String, String>> getter = new TextMapGetter<>() {
         @Override
         public String get(Map<String, String> carrier, String key) {
-            String traceparent = null;
+            String value = null;
 
             System.out.println(carrier.entrySet().toString());
 
             for (Map.Entry<String, String> entry : carrier.entrySet()) {
-                if (entry.getKey().equals("traceparent")) {
-                    traceparent = (String) entry.getValue();
+                if (entry.getKey().equals(key)) {
+                    value = (String) entry.getValue();
                     log.info("DEBUG traceparent");
-                    System.out.println(traceparent);
+                    System.out.println(key + " - " + value);
                 }
             }
 
-            return traceparent;
+            return value;
         }
 
         @Override
@@ -59,12 +59,20 @@ public class OpenTelUtils {
 
     };
 
+    public static Context GetParentContext(Context _context) {
+        var propagator = GlobalOpenTelemetry.getPropagators().getTextMapPropagator();
+        var parentContext = propagator.extract(_context, null, getter);
+        return parentContext;
+    }
+
     public static Span addTrace(Map<String, String> headers, String spanName, SpanKind kind) {
         var propagator = GlobalOpenTelemetry.getPropagators().getTextMapPropagator();
         var parentContext = propagator.extract(Context.current(), headers, getter);
-
-        log.info("DEBUG parentContext");
-        System.out.println(parentContext);
+        // SpanContext spanContext = Span.current().getSpanContext();
+        // System.out.println("Current Context id: " + spanContext.getTraceId());
+        // log.info("DEBUG parentContext");
+        // System.out.println(parentContext);
+        System.out.println("Starting SPAN");
 
         return tracer.spanBuilder(spanName)
                 .setParent(parentContext)
